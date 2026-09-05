@@ -1,0 +1,23 @@
+# Cloudflare Workers 配置文件
+
+name = "qa-system"
+main = "src/index.js"
+compatibility_date = "2023-12-01"
+
+# KV 绑定配置
+[[kv_namespaces]]
+binding = "USER_STORE"
+id = "USER_STORE_ID"  # 需要替换为实际的KV命名空间ID
+preview_id = "USER_STORE_PREVIEW_ID"
+
+[[kv_namespaces]]
+binding = "SESSION_STORE"
+id = "SESSION_STORE_ID"  # 需要替换为实际的KV命名空间ID
+preview_id = "SESSION_STORE_PREVIEW_ID"
+
+# 环境变量配置
+[env.production]
+vars = { ADMIN_PASSWORD = "your_admin_password_here" }
+
+[env.staging]
+vars = { ADMIN_PASSWORD = "your_staging_admin_password_here" }
