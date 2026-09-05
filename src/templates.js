@@ -32,12 +32,12 @@ export function getBaseHtml(title, content) {
             margin-bottom: 30px;
         }
         .btn {
-            padding: 10px 20px;
+            padding: 8px 16px;
             border: none;
-            border-radius: 5px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 16px;
-            margin-right: 10px;
+            font-size: 14px;
+            margin-right: 8px;
             text-decoration: none;
             display: inline-block;
         }
@@ -101,6 +101,37 @@ export function getBaseHtml(title, content) {
             border: 1px solid #ddd;
             border-radius: 5px;
             margin-bottom: 10px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            gap: 5px;
+        }
+        .pagination button {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background-color: white;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .pagination button:hover {
+            background-color: #f8f9fa;
+        }
+        .pagination button.active {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .pagination-info {
+            margin: 0 10px;
+            font-size: 14px;
+            color: #666;
         }
     </style>
 </head>
@@ -183,31 +214,62 @@ export function getAdminLoginTemplate() {
 }
 
 /**
- * 获取管理员后台模板
- * @param {Array} questions 问题列表
+ * 获取管理员后台模板（支持分页）
+ * @param {Object} paginationData 分页数据
  * @returns {string} HTML内容
  */
-export function getAdminTemplate(questions) {
+export function getAdminTemplate(paginationData) {
+  const { questions, total, totalPages, currentPage, pageSize } = paginationData;
+  
   let content = '';
   
   // 问题列表
   content += '<div class="question-list">';
   content += '<h2>问题列表</h2>';
   
-  for (const question of questions) {
-    content += `
-      <div class="question-item">
-        <h3>问题 ${question.id}: ${question.question}</h3>
-        <p><strong>正确答案:</strong> ${question.answer}</p>
-        <form method="POST" action="/admin/delete" style="display: inline;">
-            <input type="hidden" name="id" value="${question.id}">
-            <button type="submit" class="btn btn-danger">删除</button>
-        </form>
-      </div>
-    `;
+  if (questions.length === 0) {
+    content += '<p>暂无问题数据</p>';
+  } else {
+    for (const question of questions) {
+      content += `
+        <div class="question-item">
+          <h3>问题 ${question.id}: ${question.question}</h3>
+          <p><strong>正确答案:</strong> ${question.answer}</p>
+          <form method="POST" action="/admin/delete" style="display: inline;">
+              <input type="hidden" name="id" value="${question.id}">
+              <button type="submit" class="btn btn-danger">删除</button>
+          </form>
+        </div>
+      `;
+    }
   }
   
   content += '</div>';
+  
+  // 分页控件
+  if (totalPages > 1) {
+    content += '<div class="pagination">';
+    
+    // 上一页按钮
+    content += `<button ${currentPage === 1 ? 'disabled' : ''} onclick="window.location.href='/admin?page=${currentPage - 1}'">上一页</button>`;
+    
+    // 页码按钮
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+        content += `<button class="${i === currentPage ? 'active' : ''}" onclick="window.location.href='/admin?page=${i}'">${i}</button>`;
+      } else if (i === currentPage - 3 || i === currentPage + 3) {
+        content += '<span>...</span>';
+      }
+    }
+    
+    // 下一页按钮
+    content += `<button ${currentPage === totalPages ? 'disabled' : ''} onclick="window.location.href='/admin?page=${currentPage + 1}'">下一页</button>`;
+    
+    // 分页信息
+    content += `<span class="pagination-info">第 ${currentPage} 页，共 ${totalPages} 页，总计 ${total} 个问题</span>`;
+    
+    content += '</div>';
+  }
   
   // 添加问题表单
   content += '<div class="form-group">';
