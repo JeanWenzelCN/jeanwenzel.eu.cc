@@ -7,12 +7,12 @@ compatibility_date = "2023-12-01"
 # KV 绑定配置
 [[kv_namespaces]]
 binding = "USER_STORE"
-id = "USER_STORE_ID"  # 需要替换为实际的KV命名空间ID
+id = "c3867ad45f4444d79dc81416b0d44ac7"  # 需要替换为实际的KV命名空间ID
 preview_id = "USER_STORE_PREVIEW_ID"
 
 [[kv_namespaces]]
 binding = "SESSION_STORE"
-id = "SESSION_STORE_ID"  # 需要替换为实际的KV命名空间ID
+id = "763b8e4025204c3291d0fd8f80a555ef"  # 需要替换为实际的KV命名空间ID
 preview_id = "SESSION_STORE_PREVIEW_ID"
 
 # 环境变量配置
