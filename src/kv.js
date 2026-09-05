@@ -22,7 +22,7 @@ export class KVStore {
    */
   async saveQuestion(id, question) {
     try {
-      await this.kv.put(KV_USER_STORE, `question:${id}`, JSON.stringify(question));
+      await this.kv.put(`question:${id}`, JSON.stringify(question));
       return true;
     } catch (error) {
       console.error('保存问题失败:', error);
@@ -37,7 +37,7 @@ export class KVStore {
    */
   async getQuestion(id) {
     try {
-      const result = await this.kv.get(KV_USER_STORE, `question:${id}`);
+      const result = await this.kv.get(`question:${id}`);
       return result ? JSON.parse(result) : null;
     } catch (error) {
       console.error('获取问题失败:', error);
@@ -46,16 +46,29 @@ export class KVStore {
   }
 
   /**
-   * 获取所有问题列表
-   * @returns {Promise<Array>} 问题列表
+   * 获取所有问题列表（支持分页）
+   * @param {number} page 页码，从1开始
+   * @param {number} pageSize 每页数量
+   * @returns {Promise<{questions: Array, total: number, totalPages: number}>} 分页结果
    */
-  async getQuestions() {
+  async getQuestions(page = 1, pageSize = 10) {
     try {
-      const result = await this.kv.list(KV_USER_STORE, { prefix: 'question:' });
+      const result = await this.kv.list({ prefix: 'question:' });
       const questions = [];
       
-      for (const key of result.keys) {
-        const questionData = await this.kv.get(KV_USER_STORE, key.name);
+      // 过滤出问题键
+      const questionKeys = result.keys.filter(key => key.name.startsWith('question:'));
+      
+      // 计算分页
+      const total = questionKeys.length;
+      const totalPages = Math.ceil(total / pageSize);
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = Math.min(startIndex + pageSize, total);
+      
+      // 获取当前页的问题
+      for (let i = startIndex; i < endIndex; i++) {
+        const key = questionKeys[i];
+        const questionData = await this.kv.get(key.name);
         if (questionData) {
           try {
             const question = JSON.parse(questionData);
@@ -69,10 +82,22 @@ export class KVStore {
         }
       }
       
-      return questions;
+      return {
+        questions,
+        total,
+        totalPages,
+        currentPage: page,
+        pageSize
+      };
     } catch (error) {
       console.error('获取问题列表失败:', error);
-      return [];
+      return {
+        questions: [],
+        total: 0,
+        totalPages: 0,
+        currentPage: page,
+        pageSize
+      };
     }
   }
 
@@ -83,7 +108,7 @@ export class KVStore {
    */
   async deleteQuestion(id) {
     try {
-      await this.kv.delete(KV_USER_STORE, `question:${id}`);
+      await this.kv.delete(`question:${id}`);
       return true;
     } catch (error) {
       console.error('删除问题失败:', error);
@@ -96,11 +121,11 @@ export class KVStore {
    * @param {string} sessionId 会话ID
    * @param {Object} sessionData 会话数据
    * @param {number} ttl 过期时间（秒）
- * @returns {Promise<boolean>} 是否成功
+   * @returns {Promise<boolean>} 是否成功
    */
   async saveSession(sessionId, sessionData, ttl = 86400) {
     try {
-      await this.kv.put(KV_SESSION_STORE, sessionId, JSON.stringify(sessionData), {
+      await this.kv.put(sessionId, JSON.stringify(sessionData), {
         expirationTtl: ttl
       });
       return true;
@@ -117,7 +142,7 @@ export class KVStore {
    */
   async getSession(sessionId) {
     try {
-      const result = await this.kv.get(KV_SESSION_STORE, sessionId);
+      const result = await this.kv.get(sessionId);
       return result ? JSON.parse(result) : null;
     } catch (error) {
       console.error('获取会话失败:', error);
@@ -132,7 +157,7 @@ export class KVStore {
    */
   async deleteSession(sessionId) {
     try {
-      await this.kv.delete(KV_SESSION_STORE, sessionId);
+      await this.kv.delete(sessionId);
       return true;
     } catch (error) {
       console.error('删除会话失败:', error);
@@ -163,6 +188,18 @@ export class KVStore {
           id: 'q3',
           question: '地球有几个大洲？',
           answer: '7',
+          salt: this.generateSalt()
+        },
+        {
+          id: 'q4',
+          question: '世界上最高的山峰是？',
+          answer: '珠穆朗玛峰',
+          salt: this.generateSalt()
+        },
+        {
+          id: 'q5',
+          question: '中国的国花是？',
+          answer: '牡丹',
           salt: this.generateSalt()
         }
       ];
