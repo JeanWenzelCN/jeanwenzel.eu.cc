@@ -1,147 +1,155 @@
 // 认证服务 - 处理用户认证和会话管理
+import { crypto } from 'crypto';
+import { hashWithSalt, generateSessionId } from './utils.js';
 
-import { KV_SESSION_STORE, COOKIE_NAME, COOKIE_MAX_AGE } from './config.js';
-import { generateSessionId, getCookieValue, setCookie, clearCookie } from './utils.js';
-import { KVStore } from './kv.js';
-
-/**
- * 认证服务类
- */
 export class AuthService {
-  /**
-   * 构造函数
-   * @param {Object} env 环境变量
-   */
   constructor(env) {
-    this.kvStore = new KVStore(env);
-  }
-
-  /**
-   * 从请求中获取会话ID
-   * @param {Request} request 请求对象
-   * @returns {string|null} 会话ID，如果不存在则返回null
-   */
-  getSessionId(request) {
-    const cookieHeader = request.headers.get('Cookie');
-    if (!cookieHeader) {
-      return null;
-    }
-    return getCookieValue(cookieHeader, COOKIE_NAME);
-  }
-
-  /**
-   * 创建新的会话
-   * @param {Object} userInfo 用户信息
-   * @returns {Promise<string>} 会话ID
-   */
-  async createSession(userInfo) {
-    const sessionId = generateSessionId();
-    const sessionData = {
-      userInfo: userInfo,
-      createdAt: new Date().toISOString(),
-      lastAccessed: new Date().toISOString()
-    };
-
-    await this.kvStore.saveSession(sessionId, sessionData, COOKIE_MAX_AGE);
-    return sessionId;
-  }
-
-  /**
-   * 验证会话是否存在且有效
-   * @param {string} sessionId 会话ID
-   * @returns {Promise<boolean>} 是否有效
-   */
-  async validateSession(sessionId) {
-    if (!sessionId) {
-      return false;
-    }
-
-    const sessionData = await this.kvStore.getSession(sessionId);
-    if (!sessionData) {
-      return false;
-    }
-
-    // 检查会话是否过期（24小时）
-    const sessionTime = new Date(sessionData.lastAccessed);
-    const currentTime = new Date();
-    const timeDiff = currentTime - sessionTime;
-    const hoursDiff = timeDiff / (1000 * 60 * 60);
-
-    if (hoursDiff > 24) {
-      await this.kvStore.deleteSession(sessionId);
-      return false;
-    }
-
-    // 更新最后访问时间
-    sessionData.lastAccessed = new Date().toISOString();
-    await this.kvStore.saveSession(sessionId, sessionData, COOKIE_MAX_AGE);
-    return true;
-  }
-
-  /**
-   * 销毁会话
-   * @param {string} sessionId 会话ID
-   * @returns {Promise<boolean>} 是否成功
-   */
-  async destroySession(sessionId) {
-    if (!sessionId) {
-      return false;
-    }
-    return await this.kvStore.deleteSession(sessionId);
+    this.env = env;
   }
 
   /**
    * 验证管理员密码
-   * @param {string} password 密码
-   * @returns {boolean} 是否正确
+   * @param {string} password - 输入的密码
+   * @returns {Promise<boolean>}
    */
-  validateAdminPassword(password) {
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    if (!adminPassword) {
+  async validateAdminPassword(password) {
+    if (!this.env.ADMIN_PASSWORD) {
+      throw new Error('管理员密码未配置');
+    }
+    
+    const salt = 'admin_salt';
+    const inputHash = await hashWithSalt(password, salt);
+    const correctHash = await hashWithSalt(this.env.ADMIN_PASSWORD, salt);
+    
+    return inputHash === correctHash;
+  }
+
+  /**
+   * 创建会话
+   * @param {string} sessionId - 会话ID
+   * @param {Object} sessionData - 会话数据
+   * @returns {Promise<void>}
+   */
+  async createSession(sessionId, sessionData) {
+    try {
+      await this.env.SESSION_STORE.put(sessionId, JSON.stringify({
+        ...sessionData,
+        createdAt: Date.now(),
+        expiresAt: Date.now() + SESSION_TIMEOUT
+      }));
+    } catch (error) {
+      console.error('创建会话失败:', error);
+      throw new Error('会话创建失败');
+    }
+  }
+
+  /**
+   * 获取会话
+   * @param {string} sessionId - 会话ID
+   * @returns {Promise<Object|null>}
+   */
+  async getSession(sessionId) {
+    try {
+      const sessionData = await this.env.SESSION_STORE.get(sessionId);
+      if (!sessionData) {
+        return null;
+      }
+      
+      const session = JSON.parse(sessionData);
+      if (Date.now() > session.expiresAt) {
+        await this.deleteSession(sessionId);
+        return null;
+      }
+      
+      return session;
+    } catch (error) {
+      console.error('获取会话失败:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 删除会话
+   * @param {string} sessionId - 会话ID
+   * @returns {Promise<void>}
+   */
+  async deleteSession(sessionId) {
+    try {
+      await this.env.SESSION_STORE.delete(sessionId);
+    } catch (error) {
+      console.error('删除会话失败:', error);
+      throw new Error('会话删除失败');
+    }
+  }
+
+  /**
+   * 检查管理员权限
+   * @param {Request} request - 请求对象
+   * @returns {Promise<boolean>}
+   */
+  async isAdmin(request) {
+    try {
+      const sessionId = this.getSessionIdFromRequest(request);
+      if (!sessionId) {
+        return false;
+      }
+      
+      const session = await this.getSession(sessionId);
+      return session && session.isAdmin;
+    } catch (error) {
+      console.error('检查管理员权限失败:', error);
       return false;
     }
-    return password === adminPassword;
+  }
+
+  /**
+   * 从请求中获取会话ID
+   * @param {Request} request - 请求对象
+   * @returns {string|null}
+   */
+  getSessionIdFromRequest(request) {
+    const cookie = request.headers.get('cookie');
+    if (!cookie) {
+      return null;
+    }
+    
+    const sessionIdMatch = cookie.match(/sessionId=([^;]+)/);
+    return sessionIdMatch ? sessionIdMatch[1] : null;
   }
 
   /**
    * 设置会话Cookie
-   * @param {string} sessionId 会话ID
-   * @returns {string} Cookie字符串
+   * @param {Response} response - 响应对象
+   * @param {string} sessionId - 会话ID
+   * @returns {Response}
    */
-  setSessionCookie(sessionId) {
-    return setCookie(COOKIE_NAME, sessionId, COOKIE_MAX_AGE, '/', true, true);
+  setSessionCookie(response, sessionId) {
+    const isSecure = this.env.ADMIN_PASSWORD ? true : false;
+    const cookieOptions = {
+      httpOnly: true,
+      secure: isSecure,
+      sameSite: 'Lax',
+      path: '/'
+    };
+    
+    if (isSecure) {
+      cookieOptions.secure = true;
+    }
+    
+    response.headers.append('Set-Cookie', `sessionId=${sessionId}; ${Object.entries(cookieOptions).map(([key, value]) => `${key}=${value}`).join('; ')}`);
+    return response;
   }
 
   /**
    * 清除会话Cookie
-   * @returns {string} Cookie字符串
+   * @param {Response} response - 响应对象
+   * @returns {Response}
    */
-  clearSessionCookie() {
-    return clearCookie(COOKIE_NAME, '/');
-  }
-
-  /**
-   * 检查用户是否已通过验证
-   * @param {Request} request 请求对象
-   * @returns {Promise<boolean>} 是否已通过验证
-   */
-  async isAuthenticated(request) {
-    const sessionId = this.getSessionId(request);
-    return await this.validateSession(sessionId);
-  }
-
-  /**
-   * 获取当前用户信息
-   * @param {Request} request 请求对象
-   * @returns {Promise<Object|null>} 用户信息，如果不存在则返回null
-   */
-  async getCurrentUser(request) {
-    const sessionId = this.getSessionId(request);
-    if (!sessionId) {
-      return null;
-    }
-
-    const sessionData = await this.kvStore.getSession(sessionId);
-    return sessionData ? sessionData.userInfo : null;
+  clearSessionCookie(response) {
+    response.headers.append('Set-Cookie', 'sessionId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly');
+    return response;
   }
 }
+
+// 会话超时时间（30分钟）
+const SESSION_TIMEOUT = 30 * 60 * 1000;
