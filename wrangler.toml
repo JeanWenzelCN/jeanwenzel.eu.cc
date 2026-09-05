@@ -17,7 +17,7 @@ preview_id = "SESSION_STORE_PREVIEW_ID"
 
 # 环境变量配置
 [env.production]
-vars = { ADMIN_PASSWORD = "your_admin_password_here" }
+vars = { ADMIN_PASSWORD = "" }
 
 [env.staging]
-vars = { ADMIN_PASSWORD = "your_staging_admin_password_here" }
+vars = { ADMIN_PASSWORD = "" }
