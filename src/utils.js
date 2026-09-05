@@ -1,6 +1,8 @@
 // 工具函数 - 提供通用功能支持
 
-import { randomUUID } from 'crypto';
+export function generateUUID() {
+  return crypto.randomUUID(); // 全局 crypto 已存在
+}
 
 /**
  * 生成随机会话ID
