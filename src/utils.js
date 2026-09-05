@@ -15,6 +15,79 @@ function generateRandomString(length = 32) {
 }
 
 /**
+ * 生成会话ID
+ * @returns {string} 会话ID
+ */
+function generateSessionId() {
+    return generateRandomString(64);
+}
+
+/**
+ * 从Cookie中获取值
+ * @param {string} cookie - Cookie字符串
+ * @param {string} name - Cookie名称
+ * @returns {string|null} Cookie值
+ */
+function getCookieValue(cookie, name) {
+    if (!cookie) return null;
+    const match = cookie.match(new RegExp(`${name}=([^;]+)`));
+    return match ? match[1] : null;
+}
+
+/**
+ * 设置Cookie
+ * @param {string} name - Cookie名称
+ * @param {string} value - Cookie值
+ * @param {Object} options - Cookie选项
+ * @returns {string} Cookie字符串
+ */
+function setCookie(name, value, options = {}) {
+    const defaultOptions = {
+        path: '/',
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 1天
+        httpOnly: true,
+        secure: false,
+        sameSite: 'Lax'
+    };
+    
+    const finalOptions = { ...defaultOptions, ...options };
+    
+    let cookieString = `${name}=${value}`;
+    
+    if (finalOptions.expires) {
+        cookieString += `; Expires=${finalOptions.expires.toUTCString()}`;
+    }
+    
+    if (finalOptions.path) {
+        cookieString += `; Path=${finalOptions.path}`;
+    }
+    
+    if (finalOptions.httpOnly) {
+        cookieString += '; HttpOnly';
+    }
+    
+    if (finalOptions.secure) {
+        cookieString += '; Secure';
+    }
+    
+    if (finalOptions.sameSite) {
+        cookieString += `; SameSite=${finalOptions.sameSite}`;
+    }
+    
+    return cookieString;
+}
+
+/**
+ * 清除Cookie
+ * @param {string} name - Cookie名称
+ * @param {string} path - Cookie路径
+ * @returns {string} 清除Cookie的字符串
+ */
+function clearCookie(name, path = '/') {
+    return `${name}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly`;
+}
+
+/**
  * 创建HTML响应
  * @param {string} html - HTML内容
  * @returns {Response} HTML响应对象
@@ -131,6 +204,10 @@ function formatDateTime(timestamp, format = 'YYYY-MM-DD HH:mm:ss') {
 
 export {
     generateRandomString,
+    generateSessionId,
+    getCookieValue,
+    setCookie,
+    clearCookie,
     createHtmlResponse,
     createJsonResponse,
     createRedirectResponse,
@@ -140,3 +217,4 @@ export {
     getTimestamp,
     formatDateTime
 };
+
