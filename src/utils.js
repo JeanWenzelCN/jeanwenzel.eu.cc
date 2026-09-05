@@ -1,25 +1,79 @@
 // 工具函数 - 提供通用功能支持
 
+const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
 /**
- * 生成随机字符串
+ * 生成密码学安全的随机字符串（使用 Web Crypto，避免 Math.random 可预测的问题）
  * @param {number} length - 字符串长度
  * @returns {string} 随机字符串
  */
 function generateRandomString(length = 32) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charsLength = CHARS.length;
+    // 拒绝采样，避免取模导致的分布偏差
+    const maxValid = Math.floor(256 / charsLength) * charsLength;
     let result = '';
-    for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    const buffer = new Uint8Array(1);
+    while (result.length < length) {
+        crypto.getRandomValues(buffer);
+        if (buffer[0] < maxValid) {
+            result += CHARS.charAt(buffer[0] % charsLength);
+        }
     }
     return result;
 }
 
 /**
- * 生成会话ID
+ * 生成会话ID（64字符，密码学安全随机）
  * @returns {string} 会话ID
  */
 function generateSessionId() {
     return generateRandomString(64);
+}
+
+/**
+ * 对文本+盐值做 SHA-256 哈希（Cloudflare Workers 全局 Web Crypto API，无需任何 import）
+ * @param {string} text - 原始文本
+ * @param {string} salt - 盐值
+ * @returns {Promise<string>} 十六进制哈希字符串
+ */
+async function hashWithSalt(text, salt) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(`${text}:${salt}`);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+/**
+ * 恒定时间字符串比较，防止基于响应耗时的侧信道攻击
+ * @param {string} a
+ * @param {string} b
+ * @returns {boolean}
+ */
+function timingSafeEqual(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    if (a.length !== b.length) return false;
+    let result = 0;
+    for (let i = 0; i < a.length; i++) {
+        result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    return result === 0;
+}
+
+/**
+ * HTML 转义，防止存储型/反射型 XSS
+ * @param {*} value
+ * @returns {string}
+ */
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 /**
@@ -30,8 +84,8 @@ function generateSessionId() {
  */
 function getCookieValue(cookie, name) {
     if (!cookie) return null;
-    const match = cookie.match(new RegExp(`${name}=([^;]+)`));
-    return match ? match[1] : null;
+    const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+    return match ? decodeURIComponent(match[1]) : null;
 }
 
 /**
@@ -46,34 +100,34 @@ function setCookie(name, value, options = {}) {
         path: '/',
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000), // 1天
         httpOnly: true,
-        secure: false,
+        secure: true,
         sameSite: 'Lax'
     };
-    
+
     const finalOptions = { ...defaultOptions, ...options };
-    
-    let cookieString = `${name}=${value}`;
-    
+
+    let cookieString = `${name}=${encodeURIComponent(value)}`;
+
     if (finalOptions.expires) {
         cookieString += `; Expires=${finalOptions.expires.toUTCString()}`;
     }
-    
+
     if (finalOptions.path) {
         cookieString += `; Path=${finalOptions.path}`;
     }
-    
+
     if (finalOptions.httpOnly) {
         cookieString += '; HttpOnly';
     }
-    
+
     if (finalOptions.secure) {
         cookieString += '; Secure';
     }
-    
+
     if (finalOptions.sameSite) {
         cookieString += `; SameSite=${finalOptions.sameSite}`;
     }
-    
+
     return cookieString;
 }
 
@@ -84,8 +138,14 @@ function setCookie(name, value, options = {}) {
  * @returns {string} 清除Cookie的字符串
  */
 function clearCookie(name, path = '/') {
-    return `${name}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly`;
+    return `${name}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`;
 }
+
+const SECURITY_HEADERS = {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer'
+};
 
 /**
  * 创建HTML响应
@@ -98,7 +158,8 @@ function createHtmlResponse(html) {
             'Content-Type': 'text/html;charset=UTF-8',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
-            'Expires': '0'
+            'Expires': '0',
+            ...SECURITY_HEADERS
         }
     });
 }
@@ -114,7 +175,8 @@ function createJsonResponse(data) {
             'Content-Type': 'application/json',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
-            'Expires': '0'
+            'Expires': '0',
+            ...SECURITY_HEADERS
         }
     });
 }
@@ -141,7 +203,8 @@ function createErrorResponse(message, statusCode = 400) {
             'Content-Type': 'application/json',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
-            'Expires': '0'
+            'Expires': '0',
+            ...SECURITY_HEADERS
         }
     });
 }
@@ -192,7 +255,7 @@ function formatDateTime(timestamp, format = 'YYYY-MM-DD HH:mm:ss') {
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
     const seconds = String(date.getSeconds()).padStart(2, '0');
-    
+
     return format
         .replace('YYYY', year)
         .replace('MM', month)
@@ -205,6 +268,9 @@ function formatDateTime(timestamp, format = 'YYYY-MM-DD HH:mm:ss') {
 export {
     generateRandomString,
     generateSessionId,
+    hashWithSalt,
+    timingSafeEqual,
+    escapeHtml,
     getCookieValue,
     setCookie,
     clearCookie,
@@ -217,4 +283,3 @@ export {
     getTimestamp,
     formatDateTime
 };
-
