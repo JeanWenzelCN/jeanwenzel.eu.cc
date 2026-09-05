@@ -1,26 +1,28 @@
 // 路由处理函数 - 处理各种路由请求
 
-import { PATH_ROOT, PATH_ADMIN, PATH_LOGOUT, PATH_VALIDATE, HTTP_STATUS } from './config.js';
+import { createHtmlResponse, createJsonResponse } from './utils.js';
+import { HTTP_STATUS } from './config.js';
 import { AuthService } from './auth.js';
 import { KVStore } from './kv.js';
-import { createHtmlResponse, createJsonResponse } from './utils.js';
-import { getQuestionsTemplate, getWelcomeTemplate, getAdminLoginTemplate, getAdminTemplate } from './templates.js';
+import { 
+  getBaseHtml, 
+  getQuestionTemplate, 
+  getAdminLoginTemplate,
+  getAdminTemplate
+} from './templates.js';
 
 /**
- * 路由处理器类
+ * 路由处理类
  */
 export class RouteHandler {
-  /**
-   * 构造函数
-   * @param {Object} env 环境变量
-   */
   constructor(env) {
+    this.env = env;
     this.authService = new AuthService(env);
     this.kvStore = new KVStore(env);
   }
 
   /**
-   * 处理根路径请求
+   * 处理根路径
    * @param {Request} request 请求对象
    * @param {Object} env 环境变量
    * @returns {Promise<Response>} 响应对象
@@ -28,19 +30,31 @@ export class RouteHandler {
   async handleRoot(request, env) {
     // 检查是否有有效的会话
     const sessionId = this.authService.getSessionId(request);
-    const isAuthenticated = await this.authService.validateSession(sessionId);
-
-    if (isAuthenticated) {
-      // 已通过验证，显示欢迎页面
-      const userInfo = await this.authService.getCurrentUser(request);
-      const welcomeHtml = getWelcomeTemplate(userInfo);
-      return createHtmlResponse(HTTP_STATUS.OK, welcomeHtml);
-    } else {
-      // 未通过验证，显示问题页面
-      const questions = await this.kvStore.getQuestions();
-      const questionsHtml = getQuestionsTemplate(questions.questions);
-      return createHtmlResponse(HTTP_STATUS.OK, questionsHtml);
+    
+    if (sessionId) {
+      // 如果有会话，显示问题页面
+      const question = await this.kvStore.getRandomQuestion();
+      if (question) {
+        const html = getQuestionTemplate(question);
+        return createHtmlResponse(HTTP_STATUS.OK, html);
+      }
     }
+    
+    // 如果没有会话或没有问题，显示登录页面
+    const html = getBaseHtml('问答验证系统', `
+      <div class="container">
+        <h1>欢迎来到问答验证系统</h1>
+        <p>请输入管理员密码以访问系统：</p>
+        <form method="POST" action="/validate">
+          <div class="form-group">
+            <label for="password">密码:</label>
+            <input type="password" id="password" name="password" required>
+          </div>
+          <button type="submit" class="btn btn-primary">验证</button>
+        </form>
+      </div>
+    `);
+    return createHtmlResponse(HTTP_STATUS.OK, html);
   }
 
   /**
@@ -52,73 +66,47 @@ export class RouteHandler {
   async handleValidate(request, env) {
     try {
       const formData = await request.formData();
-      const answers = {};
-
-      // 收集所有答案
-      for (const [key, value] of formData.entries()) {
-        if (key.startsWith('answer_')) {
-          const questionId = key.replace('answer_', '');
-          answers[questionId] = value.toString();
-        }
-      }
-
-      // 验证答案
-      const questions = await this.kvStore.getQuestions();
-      let allCorrect = true;
-      const results = [];
-
-      for (const question of questions.questions) {
-        const userAnswer = answers[question.id] || '';
-        const isCorrect = userAnswer === question.answer;
-        
-        results.push({
-          id: question.id,
-          question: question.question,
-          userAnswer: userAnswer,
-          correctAnswer: question.answer,
-          isCorrect: isCorrect
-        });
-
-        if (!isCorrect) {
-          allCorrect = false;
-        }
-      }
-
-      // 如果全部正确，创建会话
-      if (allCorrect) {
-        const sessionId = await this.authService.createSession({
-          verifiedAt: new Date().toISOString(),
-          totalQuestions: questions.questions.length
-        });
-        
-        const response = new Response(JSON.stringify({
-          success: true,
-          message: '验证成功！',
-          sessionId: sessionId
-        }), {
-          status: HTTP_STATUS.OK,
-          headers: {
-            'Content-Type': 'application/json',
-            'Set-Cookie': this.authService.setSessionCookie(sessionId),
-            'Access-Control-Allow-Origin': '*'
-          }
-        });
-        
-        return response;
+      const password = formData.get('password');
+      
+      if (this.authService.validateAdminPassword(password)) {
+        // 密码正确，创建会话
+        const sessionId = this.authService.createSession();
+        const html = getBaseHtml('验证成功', `
+          <div class="container">
+            <h1>验证成功！</h1>
+            <p>您已成功登录系统。</p>
+            <a href="/" class="btn btn-primary">返回首页</a>
+            <a href="/admin" class="btn btn-secondary">进入管理后台</a>
+          </div>
+        `);
+        return createHtmlResponse(HTTP_STATUS.OK, html, sessionId);
       } else {
-        // 验证失败
-        return createJsonResponse(HTTP_STATUS.BAD_REQUEST, {
-          success: false,
-          message: '验证失败，请检查答案',
-          results: results
-        });
+        // 密码错误，显示错误信息
+        const html = getBaseHtml('验证失败', `
+          <div class="container">
+            <h1>验证失败</h1>
+            <p class="error">密码错误，请重新输入。</p>
+            <form method="POST" action="/validate">
+              <div class="form-group">
+                <label for="password">密码:</label>
+                <input type="password" id="password" name="password" required>
+              </div>
+              <button type="submit" class="btn btn-primary">重新验证</button>
+            </form>
+          </div>
+        `);
+        return createHtmlResponse(HTTP_STATUS.UNAUTHORIZED, html);
       }
     } catch (error) {
       console.error('验证请求处理失败:', error);
-      return createJsonResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, {
-        success: false,
-        message: '服务器内部错误'
-      });
+      const html = getBaseHtml('验证失败', `
+        <div class="container">
+          <h1>验证失败</h1>
+          <p>系统发生错误，请稍后重试。</p>
+          <a href="/" class="btn btn-primary">返回首页</a>
+        </div>
+      `);
+      return createHtmlResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, html);
     }
   }
 
@@ -129,32 +117,19 @@ export class RouteHandler {
    * @returns {Promise<Response>} 响应对象
    */
   async handleLogout(request, env) {
-    try {
-      const sessionId = this.authService.getSessionId(request);
-      if (sessionId) {
-        await this.authService.destroySession(sessionId);
-      }
-
-      const response = new Response(JSON.stringify({
-        success: true,
-        message: '已成功退出登录'
-      }), {
-        status: HTTP_STATUS.OK,
-        headers: {
-          'Content-Type': 'application/json',
-          'Set-Cookie': this.authService.clearSessionCookie(),
-          'Access-Control-Allow-Origin': '*'
-        }
-      });
-
-      return response;
-    } catch (error) {
-      console.error('登出请求处理失败:', error);
-      return createJsonResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, {
-        success: false,
-        message: '服务器内部错误'
-      });
+    const sessionId = this.authService.getSessionId(request);
+    if (sessionId) {
+      this.authService.deleteSession(sessionId);
     }
+    
+    const html = getBaseHtml('登出成功', `
+      <div class="container">
+        <h1>您已成功登出</h1>
+        <p>感谢使用问答验证系统。</p>
+        <a href="/" class="btn btn-primary">重新登录</a>
+      </div>
+    `);
+    return createHtmlResponse(HTTP_STATUS.OK, html);
   }
 
   /**
@@ -165,18 +140,30 @@ export class RouteHandler {
    */
   async handleAdmin(request, env) {
     try {
+      // 检查是否有有效的会话
+      const sessionId = this.authService.getSessionId(request);
+      if (!sessionId) {
+        return createHtmlResponse(HTTP_STATUS.UNAUTHORIZED, getAdminLoginTemplate());
+      }
+      
       const url = new URL(request.url);
       const page = parseInt(url.searchParams.get('page')) || 1;
       const pageSize = 10; // 每页显示10个问题
 
-      // 检查管理员密码
+      // 检查管理员密码（POST请求用于登录验证）
       if (request.method === 'POST') {
         const formData = await request.formData();
         const password = formData.get('password');
-
+        
         if (!this.authService.validateAdminPassword(password)) {
           return createHtmlResponse(HTTP_STATUS.UNAUTHORIZED, getAdminLoginTemplate());
         }
+        
+        // 密码正确，创建会话并重定向到管理后台
+        const newSessionId = this.authService.createSession();
+        const paginationData = await this.kvStore.getQuestions(page, pageSize);
+        const adminHtml = getAdminTemplate(paginationData);
+        return createHtmlResponse(HTTP_STATUS.OK, adminHtml, newSessionId);
       }
 
       // 获取分页问题列表
@@ -185,7 +172,14 @@ export class RouteHandler {
       return createHtmlResponse(HTTP_STATUS.OK, adminHtml);
     } catch (error) {
       console.error('管理员请求处理失败:', error);
-      return createHtmlResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, getAdminLoginTemplate());
+      const html = getBaseHtml('管理员后台', `
+        <div class="container">
+          <h1>内部服务器错误</h1>
+          <p>系统发生错误，请稍后重试。</p>
+          <a href="/" class="btn btn-primary">返回首页</a>
+        </div>
+      `);
+      return createHtmlResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, html);
     }
   }
 
@@ -197,60 +191,46 @@ export class RouteHandler {
    */
   async handleAddQuestion(request, env) {
     try {
-      // 检查管理员权限
+      // 检查是否有有效的会话
       const sessionId = this.authService.getSessionId(request);
-      const isAdmin = await this.authService.isAdmin(sessionId);
-      
-      if (!isAdmin) {
-        return createJsonResponse(HTTP_STATUS.UNAUTHORIZED, {
-          success: false,
-          message: '需要管理员权限'
-        });
+      if (!sessionId) {
+        return createHtmlResponse(HTTP_STATUS.UNAUTHORIZED, getAdminLoginTemplate());
       }
-
+      
       const formData = await request.formData();
       const question = formData.get('question');
       const answer = formData.get('answer');
-
-      if (!question || !answer) {
-        return createJsonResponse(HTTP_STATUS.BAD_REQUEST, {
-          success: false,
-          message: '问题内容和答案不能为空'
-        });
-      }
-
-      // 生成随机ID
-      const questionId = 'q' + Date.now();
       
-      // 创建问题对象
-      const questionData = {
-        id: questionId,
-        question: question.toString(),
-        answer: answer.toString(),
-        salt: this.kvStore.generateSalt()
-      };
-
-      // 保存问题
-      const success = await this.kvStore.saveQuestion(questionId, questionData);
-      
-      if (success) {
-        return createJsonResponse(HTTP_STATUS.OK, {
-          success: true,
-          message: '问题添加成功',
-          questionId: questionId
-        });
+      if (question && answer) {
+        await this.kvStore.saveQuestion(question, answer);
+        const html = getBaseHtml('添加成功', `
+          <div class="container">
+            <h1>问题添加成功</h1>
+            <p>新问题已成功添加到系统中。</p>
+            <a href="/admin" class="btn btn-primary">返回管理后台</a>
+          </div>
+        `);
+        return createHtmlResponse(HTTP_STATUS.OK, html);
       } else {
-        return createJsonResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, {
-          success: false,
-          message: '保存问题失败'
-        });
+        const html = getBaseHtml('添加失败', `
+          <div class="container">
+            <h1>添加失败</h1>
+            <p>请填写完整的问题和答案。</p>
+            <a href="/admin" class="btn btn-primary">返回管理后台</a>
+          </div>
+        `);
+        return createHtmlResponse(HTTP_STATUS.BAD_REQUEST, html);
       }
     } catch (error) {
       console.error('添加问题请求处理失败:', error);
-      return createJsonResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, {
-        success: false,
-        message: '服务器内部错误'
-      });
+      const html = getBaseHtml('添加失败', `
+        <div class="container">
+          <h1>添加失败</h1>
+          <p>系统发生错误，请稍后重试。</p>
+          <a href="/admin" class="btn btn-primary">返回管理后台</a>
+        </div>
+      `);
+      return createHtmlResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, html);
     }
   }
 
@@ -262,47 +242,45 @@ export class RouteHandler {
    */
   async handleDeleteQuestion(request, env) {
     try {
-      // 检查管理员权限
+      // 检查是否有有效的会话
       const sessionId = this.authService.getSessionId(request);
-      const isAdmin = await this.authService.isAdmin(sessionId);
-      
-      if (!isAdmin) {
-        return createJsonResponse(HTTP_STATUS.UNAUTHORIZED, {
-          success: false,
-          message: '需要管理员权限'
-        });
+      if (!sessionId) {
+        return createHtmlResponse(HTTP_STATUS.UNAUTHORIZED, getAdminLoginTemplate());
       }
-
+      
       const formData = await request.formData();
       const questionId = formData.get('id');
-
-      if (!questionId) {
-        return createJsonResponse(HTTP_STATUS.BAD_REQUEST, {
-          success: false,
-          message: '问题ID不能为空'
-        });
-      }
-
-      // 删除问题
-      const success = await this.kvStore.deleteQuestion(questionId);
       
-      if (success) {
-        return createJsonResponse(HTTP_STATUS.OK, {
-          success: true,
-          message: '问题删除成功'
-        });
+      if (questionId) {
+        await this.kvStore.deleteQuestion(questionId);
+        const html = getBaseHtml('删除成功', `
+          <div class="container">
+            <h1>问题删除成功</h1>
+            <p>问题已成功从系统中删除。</p>
+            <a href="/admin" class="btn btn-primary">返回管理后台</a>
+          </div>
+        `);
+        return createHtmlResponse(HTTP_STATUS.OK, html);
       } else {
-        return createJsonResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, {
-          success: false,
-          message: '删除问题失败'
-        });
+        const html = getBaseHtml('删除失败', `
+          <div class="container">
+            <h1>删除失败</h1>
+            <p>请选择要删除的问题。</p>
+            <a href="/admin" class="btn btn-primary">返回管理后台</a>
+          </div>
+        `);
+        return createHtmlResponse(HTTP_STATUS.BAD_REQUEST, html);
       }
     } catch (error) {
       console.error('删除问题请求处理失败:', error);
-      return createJsonResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, {
-        success: false,
-        message: '服务器内部错误'
-      });
+      const html = getBaseHtml('删除失败', `
+        <div class="container">
+          <h1>删除失败</h1>
+          <p>系统发生错误，请稍后重试。</p>
+          <a href="/admin" class="btn btn-primary">返回管理后台</a>
+        </div>
+      `);
+      return createHtmlResponse(HTTP_STATUS.INTERNAL_SERVER_ERROR, html);
     }
   }
 
