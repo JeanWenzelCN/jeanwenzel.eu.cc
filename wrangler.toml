@@ -8,14 +8,14 @@ compatibility_date = "2024-01-01"
 # 存放验证问题（question:<id> -> { question, answerHash, salt }）
 [[kv_namespaces]]
 binding = "KV"
-id = "替换为你自己的 KV 命名空间 ID"
-preview_id = "替换为你自己的预览 KV 命名空间 ID"
+id = "c3867ad45f4444d79dc81416b0d44ac7"
+preview_id = "c3867ad45f4444d79dc81416b0d44ac7"
 
 # 存放会话数据 + 登录限流计数
 [[kv_namespaces]]
 binding = "SESSION_STORE"
-id = "替换为你自己的 KV 命名空间 ID"
-preview_id = "替换为你自己的预览 KV 命名空间 ID"
+id = "763b8e4025204c3291d0fd8f80a555ef"
+preview_id = "763b8e4025204c3291d0fd8f80a555ef"
 
 # 注意：管理员密码不要写在这个文件里（这个文件通常会被提交到 Git）。
 # 部署前请用下面的命令把密码作为加密 Secret 上传，不要在此处使用 [vars]：
