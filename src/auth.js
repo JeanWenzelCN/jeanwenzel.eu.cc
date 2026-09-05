@@ -1,6 +1,7 @@
-// 认证服务 - 处理用户认证和会话管理
-import { crypto } from 'crypto';
-import { hashWithSalt, generateSessionId } from './utils.js';
+// src/utils.js
+export function generateUUID() {
+  return crypto.randomUUID(); // 全局 crypto 已存在
+}
 
 export class AuthService {
   constructor(env) {
