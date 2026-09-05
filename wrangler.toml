@@ -3,6 +3,8 @@
 name = "qa-system"
 main = "src/index.js"
 compatibility_date = "2023-12-01"
+# 顶层配置，对所有环境生效
+compatibility_flags = ["nodejs_compat"]
 
 # KV 绑定配置
 [[kv_namespaces]]
