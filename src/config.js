@@ -29,6 +29,13 @@ export const MAX_MESSAGE_PROMPT_LENGTH = 100; // 留言提示语最大长度
 export const DEFAULT_MESSAGE_PROMPT = '如果你有什么想说的，可以留言给我们（选填）';
 export const MESSAGE_SETTINGS_KEY = 'settings:message';
 
+// 通过校验后签发的跨子域访问令牌
+// 注意：ACCESS_TOKEN_COOKIE_NAME 和 ACCESS_TOKEN_KV_PREFIX 这两个值
+// 必须和目标子域名那个"关卡" Worker 里的配置完全一致，否则对方读不到/查不到。
+export const ACCESS_TOKEN_COOKIE_NAME = 'access_token';
+export const ACCESS_TOKEN_KV_PREFIX = 'access:';
+export const ACCESS_TOKEN_TTL_SECONDS = 60 * 60; // 令牌有效期：1小时，按需调整
+
 // 登录 / 验证 暴力破解防护
 export const RATE_LIMIT_MAX_ATTEMPTS = 5; // 窗口期内允许的最大失败次数
 export const RATE_LIMIT_WINDOW_SECONDS = 15 * 60; // 15分钟窗口

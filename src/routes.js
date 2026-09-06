@@ -7,7 +7,7 @@ import {
   getAdminLoginTemplate,
   getAdminTemplate
 } from './templates.js';
-import { getSuccessPageTemplate } from './pages/success.js';
+import { grantAccessAndRedirect } from './pages/success.js';
 import { createHtmlResponse, createRedirectResponse, createErrorResponse } from './utils.js';
 
 /**
@@ -25,7 +25,8 @@ export class RouteHandler {
   // -----------------------------------------------------------------------
 
   /**
-   * 根路径：已验证 -> 独立成功页；进行中 -> 跳到当前题目；否则开启一次新的问答流程
+   * 根路径：已验证 -> 签发跨子域访问令牌并跳转到目标子域名；
+   *         进行中 -> 跳到当前题目；否则开启一次新的问答流程
    */
   async handleRoot(request) {
     try {
@@ -33,7 +34,7 @@ export class RouteHandler {
       const session = sessionId ? await this.authService.getSession(sessionId) : null;
 
       if (session && session.verified) {
-        return createHtmlResponse(getSuccessPageTemplate(session));
+        return await grantAccessAndRedirect(this.env, this.authService, sessionId);
       }
 
       if (session && Array.isArray(session.questionOrder)) {

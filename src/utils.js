@@ -116,6 +116,10 @@ function setCookie(name, value, options = {}) {
         cookieString += `; Path=${finalOptions.path}`;
     }
 
+    if (finalOptions.domain) {
+        cookieString += `; Domain=${finalOptions.domain}`;
+    }
+
     if (finalOptions.httpOnly) {
         cookieString += '; HttpOnly';
     }
