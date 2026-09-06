@@ -14,8 +14,12 @@ export default {
         return await routeHandler.handleRoot(request);
       }
 
-      if (pathname === '/validate' && method === 'POST') {
-        return await routeHandler.handleValidate(request);
+      if (pathname === '/question' && method === 'GET') {
+        return await routeHandler.handleQuestionPage(request);
+      }
+
+      if (pathname === '/question/answer' && method === 'POST') {
+        return await routeHandler.handleQuestionAnswer(request);
       }
 
       if (pathname === '/logout' && (method === 'GET' || method === 'POST')) {
@@ -44,6 +48,14 @@ export default {
 
       if (pathname === '/admin/delete' && method === 'POST') {
         return await routeHandler.handleDeleteQuestion(request);
+      }
+
+      if (pathname === '/admin/settings' && method === 'POST') {
+        return await routeHandler.handleAdminSettings(request);
+      }
+
+      if (pathname === '/admin/message/delete' && method === 'POST') {
+        return await routeHandler.handleDeleteMessage(request);
       }
 
       return new Response('Not Found', { status: 404 });

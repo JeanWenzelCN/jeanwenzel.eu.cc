@@ -19,6 +19,16 @@ export const MAX_QUESTIONS = 10; // 最大问题数量
 export const MAX_QUESTION_LENGTH = 200; // 问题最大长度
 export const MAX_ANSWER_LENGTH = 100; // 答案最大长度
 
+// 选择题相关配置
+export const MIN_OPTIONS = 2; // 选择题最少选项数
+export const MAX_OPTIONS = 6; // 选择题最多选项数
+
+// 留言功能配置
+export const MAX_MESSAGE_LENGTH = 500; // 留言最大长度
+export const MAX_MESSAGE_PROMPT_LENGTH = 100; // 留言提示语最大长度
+export const DEFAULT_MESSAGE_PROMPT = '如果你有什么想说的，可以留言给我们（选填）';
+export const MESSAGE_SETTINGS_KEY = 'settings:message';
+
 // 登录 / 验证 暴力破解防护
 export const RATE_LIMIT_MAX_ATTEMPTS = 5; // 窗口期内允许的最大失败次数
 export const RATE_LIMIT_WINDOW_SECONDS = 15 * 60; // 15分钟窗口
@@ -27,7 +37,7 @@ export const RATE_LIMIT_WINDOW_SECONDS = 15 * 60; // 15分钟窗口
 export const PATH_ROOT = '/';
 export const PATH_ADMIN = '/admin';
 export const PATH_LOGOUT = '/logout';
-export const PATH_VALIDATE = '/validate';
+export const PATH_QUESTION = '/question';
 
 // HTTP 状态码
 export const HTTP_STATUS = {

@@ -2,7 +2,7 @@
 import { escapeHtml } from './utils.js';
 
 /**
- * 获取基础HTML模板
+ * 获取基础HTML模板（统一配色：低饱和的蓝灰色系）
  * @param {string} title 页面标题
  * @param {string} content 页面内容
  * @returns {string} 完整的HTML
@@ -16,186 +16,334 @@ export function getBaseHtml(title, content) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${escapeHtml(title)}</title>
     <style>
+        :root {
+            --color-ink: #2C3E56;       /* 标题、深色文字 */
+            --color-primary: #225577;   /* 主色：按钮、链接、强调 */
+            --color-slate: #525367;     /* 次要文字、边框强调 */
+            --color-bg: #F3F4F6;        /* 页面背景 */
+            --color-surface: #FFFFFF;   /* 卡片背景 */
+            --color-border: #DCE0E6;
+            --color-muted: #7B7F8C;
+            --color-danger: #A3454C;
+            --color-danger-bg: #F6E9EA;
+            --color-success: #3D7259;
+            --color-success-bg: #E9F1EC;
+            --color-progress-bg: #E3E6EB;
+            --radius: 10px;
+        }
+        * { box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+            max-width: 640px;
             margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
+            padding: 32px 20px 60px;
+            line-height: 1.65;
+            background: var(--color-bg);
+            color: var(--color-ink);
         }
         .header {
             text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #007bff;
+            margin-bottom: 28px;
         }
-        .content {
-            margin-bottom: 30px;
+        .header h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--color-ink);
+            margin: 0;
+        }
+        .panel {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .panel--accent {
+            border-top: 3px solid var(--color-primary);
+        }
+        .muted { color: var(--color-muted); font-size: 0.9rem; }
+        code {
+            background: var(--color-bg);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
         }
         .btn {
-            padding: 8px 16px;
+            padding: 10px 18px;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 0.95rem;
             margin-right: 8px;
+            margin-top: 6px;
             text-decoration: none;
             display: inline-block;
+            transition: opacity 0.15s ease;
         }
-        .btn-primary { background-color: #007bff; color: white; }
-        .btn-primary:hover { background-color: #0056b3; }
-        .btn-danger { background-color: #dc3545; color: white; }
-        .btn-danger:hover { background-color: #c82333; }
-        .btn-success { background-color: #28a745; color: white; }
-        .btn-success:hover { background-color: #218838; }
+        .btn:hover { opacity: 0.88; }
+        .btn-primary { background-color: var(--color-primary); color: #fff; }
+        .btn-danger { background-color: var(--color-danger); color: #fff; }
+        .btn-success { background-color: var(--color-success); color: #fff; }
+        .btn-outline {
+            background: transparent;
+            color: var(--color-slate);
+            border: 1px solid var(--color-border);
+        }
         .error {
-            color: #dc3545; background-color: #f8d7da;
-            border: 1px solid #f5c6cb; padding: 10px;
-            border-radius: 5px; margin-bottom: 20px;
+            color: var(--color-danger);
+            background-color: var(--color-danger-bg);
+            border: 1px solid var(--color-danger);
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            font-size: 0.92rem;
         }
         .success {
-            color: #155724; background-color: #d4edda;
-            border: 1px solid #c3e6cb; padding: 10px;
-            border-radius: 5px; margin-bottom: 20px;
+            color: var(--color-success);
+            background-color: var(--color-success-bg);
+            border: 1px solid var(--color-success);
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 18px;
         }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input, .form-group textarea {
-            width: 100%; padding: 8px; border: 1px solid #ccc;
-            border-radius: 3px; font-size: 16px;
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: var(--color-slate);
+            font-size: 0.92rem;
         }
-        .question-list { margin-bottom: 20px; }
+        .form-group input[type="text"],
+        .form-group input[type="password"],
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            font-size: 1rem;
+            background: var(--color-bg);
+            color: var(--color-ink);
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--color-primary);
+        }
+        .option-list { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 6px; }
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            background: var(--color-bg);
+            cursor: pointer;
+        }
+        .option-item input { accent-color: var(--color-primary); }
+        .progress {
+            height: 8px;
+            background: var(--color-progress-bg);
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress__bar {
+            height: 100%;
+            background: var(--color-primary);
+            border-radius: 999px;
+            transition: width 0.2s ease;
+        }
+        .progress__label {
+            font-size: 0.85rem;
+            color: var(--color-muted);
+            margin-bottom: 18px;
+            text-align: right;
+        }
         .question-item {
-            padding: 15px; border: 1px solid #ddd;
-            border-radius: 5px; margin-bottom: 10px;
+            padding: 14px 16px;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius);
+            margin-bottom: 10px;
+            background: var(--color-surface);
+        }
+        .question-item h3 { margin: 0 0 6px; font-size: 1rem; color: var(--color-ink); }
+        .badge {
+            display: inline-block;
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--color-bg);
+            color: var(--color-slate);
+            border: 1px solid var(--color-border);
+            margin-left: 6px;
+            vertical-align: middle;
         }
         .pagination {
             display: flex; justify-content: center; align-items: center;
-            margin-top: 20px; gap: 5px;
+            margin-top: 16px; gap: 6px; flex-wrap: wrap;
         }
         .pagination button {
-            padding: 6px 12px; border: 1px solid #ddd;
-            background-color: white; cursor: pointer; border-radius: 3px;
+            padding: 6px 12px; border: 1px solid var(--color-border);
+            background-color: var(--color-surface); cursor: pointer; border-radius: 6px;
+            color: var(--color-slate);
         }
-        .pagination button:hover { background-color: #f8f9fa; }
-        .pagination button.active { background-color: #007bff; color: white; border-color: #007bff; }
-        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .pagination-info { margin: 0 10px; font-size: 14px; color: #666; }
+        .pagination button.active { background-color: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+        .pagination button:disabled { opacity: 0.45; cursor: not-allowed; }
+        .pagination-info { margin: 0 8px; font-size: 0.85rem; color: var(--color-muted); }
+        .message-item {
+            padding: 12px 14px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: var(--color-bg);
+        }
+        .message-item .meta { font-size: 0.78rem; color: var(--color-muted); margin-top: 6px; }
+        h2 { font-size: 1.1rem; color: var(--color-ink); margin-top: 0; }
+        hr { border: none; border-top: 1px solid var(--color-border); margin: 24px 0; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>${escapeHtml(title)}</h1>
     </div>
-    <div class="content">
-        ${content}
-    </div>
+    ${content}
 </body>
 </html>
   `;
 }
 
 /**
- * 获取问题页面模板（公开展示，questions 只含 id/question，不含答案）
- * @param {Array} questions 问题列表
- * @param {string} [errorMessage] 上一次验证失败时的提示
- * @returns {string} HTML内容
+ * 单题页面（一页一题模式）
+ * @param {Object} params
+ * @param {Object} params.question 当前题目（公开字段：id/question/type/options）
+ * @param {number} params.index 当前是第几题（1-based）
+ * @param {number} params.total 总题数
+ * @param {string} params.csrfToken
+ * @param {string} [params.errorMessage] 上一次作答错误时的提示
+ * @param {boolean} [params.showMessage] 是否在本题展示留言框（最后一题时为 true）
+ * @param {string} [params.messagePrompt] 留言框提示语
+ * @returns {string}
  */
-export function getQuestionsTemplate(questions, errorMessage = '') {
-  let content = '<p>请回答以下所有问题，全部正确后方可访问内容。</p>';
+export function getQuestionStepTemplate({
+  question,
+  index,
+  total,
+  csrfToken,
+  errorMessage = '',
+  showMessage = false,
+  messagePrompt = ''
+}) {
+  const progressPercent = total > 0 ? Math.round(((index - 1) / total) * 100) : 0;
 
-  if (errorMessage) {
-    content += `<div class="error">${escapeHtml(errorMessage)}</div>`;
-  }
-
-  if (!questions || questions.length === 0) {
-    content += '<p>暂无验证问题，请联系管理员。</p>';
-    return getBaseHtml('问答验证系统', content);
-  }
-
-  content += '<form id="qaForm" method="POST" action="/validate">';
-
-  for (const question of questions) {
-    content += `
-      <div class="question-item">
-        <h3>问题: ${escapeHtml(question.question)}</h3>
-        <div class="form-group">
-          <input type="text"
-                 name="answer_${escapeHtml(question.id)}"
-                 placeholder="请输入答案"
-                 maxlength="100"
-                 required>
-        </div>
+  let inputBlock;
+  if (question.type === 'choice') {
+    const options = Array.isArray(question.options) ? question.options : [];
+    inputBlock = `
+      <div class="option-list">
+        ${options.map((opt, i) => `
+          <label class="option-item">
+            <input type="radio" name="answer" value="${escapeHtml(opt)}" required>
+            <span>${escapeHtml(opt)}</span>
+          </label>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    inputBlock = `
+      <div class="form-group">
+        <input type="text" name="answer" maxlength="100" required autofocus>
       </div>
     `;
   }
 
-  content += '<button type="submit" class="btn btn-primary">提交验证</button>';
-  content += '</form>';
-
-  return getBaseHtml('问答验证系统', content);
-}
-
-/**
- * 获取欢迎页面模板（仅在会话已通过验证时调用）
- * @param {Object} userInfo 用户信息 { name, email, isAdmin }
- * @returns {string} HTML内容
- */
-export function getWelcomeTemplate(userInfo = {}) {
-  const name = escapeHtml(userInfo.name || '访客');
-  const content = `
-    <div class="success">
-        <h2>欢迎，${name}！</h2>
-        <p>您已成功通过验证，可以访问本网站内容。</p>
+  const messageBlock = showMessage ? `
+    <div class="form-group">
+      <label for="message">${escapeHtml(messagePrompt)}</label>
+      <textarea id="message" name="message" rows="3" maxlength="500"></textarea>
     </div>
-    ${userInfo.isAdmin ? '<a href="/admin" class="btn btn-primary">管理后台</a>' : ''}
-    <a href="/logout" class="btn btn-danger">退出登录</a>
+  ` : '';
+
+  const content = `
+    <div class="panel">
+      <div class="progress"><div class="progress__bar" style="width:${progressPercent}%"></div></div>
+      <div class="progress__label">第 ${index} / ${total} 题</div>
+
+      ${errorMessage ? `<div class="error">${escapeHtml(errorMessage)}</div>` : ''}
+
+      <form method="POST" action="/question/answer">
+        <input type="hidden" name="csrf_token" value="${escapeHtml(csrfToken)}">
+        <h3>${escapeHtml(question.question)}</h3>
+        ${inputBlock}
+        ${messageBlock}
+        <button type="submit" class="btn btn-primary">${index >= total ? '提交并完成' : '下一题'}</button>
+      </form>
+    </div>
   `;
 
-  return getBaseHtml('欢迎', content);
+  return getBaseHtml('问答验证', content);
 }
 
 /**
- * 获取管理员登录模板
- * @param {string} [errorMessage]
- * @returns {string} HTML内容
+ * 暂无题目 / 起始占位页
+ */
+export function getEmptyQuestionsTemplate() {
+  const content = `
+    <div class="panel">
+      <p>暂无验证问题，请联系管理员配置题目。</p>
+    </div>
+  `;
+  return getBaseHtml('问答验证', content);
+}
+
+/**
+ * 管理员登录模板
  */
 export function getAdminLoginTemplate(errorMessage = '') {
   const content = `
-    ${errorMessage ? `<div class="error">${escapeHtml(errorMessage)}</div>` : ''}
-    <form method="POST" action="/admin/login">
-        <div class="form-group">
-            <label for="password">管理员密码:</label>
-            <input type="password" id="password" name="password" required>
-        </div>
-        <button type="submit" class="btn btn-primary">登录</button>
-    </form>
+    <div class="panel">
+      ${errorMessage ? `<div class="error">${escapeHtml(errorMessage)}</div>` : ''}
+      <form method="POST" action="/admin/login">
+          <div class="form-group">
+              <label for="password">管理员密码</label>
+              <input type="password" id="password" name="password" required>
+          </div>
+          <button type="submit" class="btn btn-primary">登录</button>
+      </form>
+    </div>
   `;
-
   return getBaseHtml('管理员登录', content);
 }
 
 /**
- * 获取管理员后台模板（支持分页）
- * @param {Object} paginationData 分页数据
- * @param {string} csrfToken 当前管理员会话的 CSRF token，写入表单隐藏字段
- * @returns {string} HTML内容
+ * 管理员后台模板
+ * @param {Object} paginationData 题目分页数据
+ * @param {string} csrfToken
+ * @param {Object} messageSettings { enabled, prompt }
+ * @param {Object} messagesData 留言分页数据
  */
-export function getAdminTemplate(paginationData, csrfToken) {
+export function getAdminTemplate(paginationData, csrfToken, messageSettings, messagesData) {
   const { questions, total, totalPages, currentPage } = paginationData;
   const token = escapeHtml(csrfToken);
 
-  let content = '<div class="question-list">';
-  content += '<h2>问题列表</h2>';
+  // ---- 题目列表 ----
+  let content = '<div class="panel"><h2>题目列表</h2>';
 
   if (questions.length === 0) {
-    content += '<p>暂无问题数据</p>';
+    content += '<p class="muted">暂无题目数据</p>';
   } else {
     for (const question of questions) {
+      const typeLabel = question.type === 'choice' ? '选择题' : '文本题';
+      let optionsPreview = '';
+      if (question.type === 'choice' && Array.isArray(question.options)) {
+        optionsPreview = `<p class="muted">选项：${question.options.map(escapeHtml).join(' / ')}</p>`;
+      }
       content += `
         <div class="question-item">
-          <h3>问题: ${escapeHtml(question.question)}</h3>
-          <p><em>答案以哈希形式安全存储，后台不回显明文</em></p>
+          <h3>${escapeHtml(question.question)} <span class="badge">${typeLabel}</span></h3>
+          ${optionsPreview}
+          <p class="muted"><em>答案以哈希形式安全存储，后台不回显明文</em></p>
           <form method="POST" action="/admin/delete" style="display: inline;">
               <input type="hidden" name="csrf_token" value="${token}">
               <input type="hidden" name="id" value="${escapeHtml(question.id)}">
@@ -206,12 +354,9 @@ export function getAdminTemplate(paginationData, csrfToken) {
     }
   }
 
-  content += '</div>';
-
   if (totalPages > 1) {
     content += '<div class="pagination">';
     content += `<button ${currentPage === 1 ? 'disabled' : ''} onclick="window.location.href='/admin?page=${currentPage - 1}'">上一页</button>`;
-
     for (let i = 1; i <= totalPages; i++) {
       if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
         content += `<button class="${i === currentPage ? 'active' : ''}" onclick="window.location.href='/admin?page=${i}'">${i}</button>`;
@@ -219,32 +364,110 @@ export function getAdminTemplate(paginationData, csrfToken) {
         content += '<span>...</span>';
       }
     }
-
     content += `<button ${currentPage === totalPages ? 'disabled' : ''} onclick="window.location.href='/admin?page=${currentPage + 1}'">下一页</button>`;
     content += `<span class="pagination-info">第 ${currentPage} 页，共 ${totalPages} 页，总计 ${total} 个问题</span>`;
     content += '</div>';
   }
 
-  content += '<div class="form-group">';
-  content += '<h2>添加新问题</h2>';
-  content += '<form method="POST" action="/admin/add">';
-  content += `<input type="hidden" name="csrf_token" value="${token}">`;
-  content += '<div class="form-group">';
-  content += '<label for="question">问题内容:</label>';
-  content += '<input type="text" id="question" name="question" maxlength="200" required>';
-  content += '</div>';
-  content += '<div class="form-group">';
-  content += '<label for="answer">正确答案:</label>';
-  content += '<input type="text" id="answer" name="answer" maxlength="100" required>';
-  content += '</div>';
-  content += '<button type="submit" class="btn btn-success">添加问题</button>';
-  content += '</form>';
   content += '</div>';
 
-  content += `<form method="POST" action="/admin/logout" style="margin-top:20px;">
+  // ---- 添加题目 ----
+  content += `
+    <div class="panel">
+      <h2>添加新题目</h2>
+      <form method="POST" action="/admin/add" id="addQuestionForm">
+        <input type="hidden" name="csrf_token" value="${token}">
+
+        <div class="form-group">
+          <label>题目类型</label>
+          <label style="font-weight:400;"><input type="radio" name="type" value="text" checked onchange="qaToggleType()"> 文本题</label>
+          &nbsp;&nbsp;
+          <label style="font-weight:400;"><input type="radio" name="type" value="choice" onchange="qaToggleType()"> 选择题</label>
+        </div>
+
+        <div class="form-group">
+          <label for="question">题目内容</label>
+          <input type="text" id="question" name="question" maxlength="200" required>
+        </div>
+
+        <div id="optionsBlock" style="display:none;">
+          <div class="form-group">
+            <label>选项（至少填 2 个，最多 6 个）</label>
+            <input type="text" name="option_1" maxlength="100" placeholder="选项 1" style="margin-bottom:8px;">
+            <input type="text" name="option_2" maxlength="100" placeholder="选项 2" style="margin-bottom:8px;">
+            <input type="text" name="option_3" maxlength="100" placeholder="选项 3（选填）" style="margin-bottom:8px;">
+            <input type="text" name="option_4" maxlength="100" placeholder="选项 4（选填）" style="margin-bottom:8px;">
+            <input type="text" name="option_5" maxlength="100" placeholder="选项 5（选填）" style="margin-bottom:8px;">
+            <input type="text" name="option_6" maxlength="100" placeholder="选项 6（选填）">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="answer">正确答案（选择题需与某个选项完全一致）</label>
+          <input type="text" id="answer" name="answer" maxlength="100" required>
+        </div>
+
+        <button type="submit" class="btn btn-success">添加题目</button>
+      </form>
+    </div>
+
+    <script>
+      function qaToggleType() {
+        var isChoice = document.querySelector('input[name="type"]:checked').value === 'choice';
+        document.getElementById('optionsBlock').style.display = isChoice ? 'block' : 'none';
+      }
+    </script>
+  `;
+
+  // ---- 留言设置 ----
+  content += `
+    <div class="panel">
+      <h2>留言功能设置</h2>
+      <form method="POST" action="/admin/settings">
+        <input type="hidden" name="csrf_token" value="${token}">
+        <div class="form-group">
+          <label style="font-weight:400;">
+            <input type="checkbox" name="enabled" ${messageSettings.enabled ? 'checked' : ''}>
+            在最后一题展示留言框（访客选填，不做校验）
+          </label>
+        </div>
+        <div class="form-group">
+          <label for="prompt">留言提示语</label>
+          <input type="text" id="prompt" name="prompt" maxlength="100" value="${escapeHtml(messageSettings.prompt)}">
+        </div>
+        <button type="submit" class="btn btn-primary">保存设置</button>
+      </form>
+    </div>
+  `;
+
+  // ---- 留言列表 ----
+  content += '<div class="panel"><h2>访客留言</h2>';
+  if (!messagesData || messagesData.messages.length === 0) {
+    content += '<p class="muted">暂无留言</p>';
+  } else {
+    for (const msg of messagesData.messages) {
+      const time = msg.submittedAt ? new Date(msg.submittedAt).toLocaleString('zh-CN') : '';
+      content += `
+        <div class="message-item">
+          <div>${escapeHtml(msg.content)}</div>
+          <div class="meta">${escapeHtml(time)}</div>
+          <form method="POST" action="/admin/message/delete" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="${token}">
+            <input type="hidden" name="id" value="${escapeHtml(msg.id)}">
+            <button type="submit" class="btn btn-outline">删除</button>
+          </form>
+        </div>
+      `;
+    }
+  }
+  content += '</div>';
+
+  content += `
+    <form method="POST" action="/admin/logout">
       <input type="hidden" name="csrf_token" value="${token}">
-      <button type="submit" class="btn btn-danger">退出管理员登录</button>
-  </form>`;
+      <button type="submit" class="btn btn-outline">退出管理员登录</button>
+    </form>
+  `;
 
   return getBaseHtml('管理员后台', content);
 }

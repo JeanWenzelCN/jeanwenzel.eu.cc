@@ -93,6 +93,29 @@ export class AuthService {
   }
 
   /**
+   * 局部更新一个已存在的会话（例如推进答题进度），不改变 csrfToken/createdAt，
+   * 且不允许通过 patch 覆盖这两个字段，防止业务代码不小心把 CSRF token 换掉导致表单校验失败。
+   * @param {string} sessionId
+   * @param {Object} patch - 要合并进去的字段
+   * @returns {Promise<Object|null>} 更新后的会话，会话不存在则返回 null
+   */
+  async updateSession(sessionId, patch) {
+    const session = await this.getSession(sessionId);
+    if (!session) return null;
+
+    const { csrfToken, createdAt, ...safePatch } = patch || {};
+    const updated = { ...session, ...safePatch };
+
+    try {
+      await this.env.SESSION_STORE.put(sessionId, JSON.stringify(updated));
+      return updated;
+    } catch (error) {
+      console.error('更新会话失败:', error);
+      throw new Error('会话更新失败');
+    }
+  }
+
+  /**
    * 获取会话
    * @param {string} sessionId - 会话ID
    * @returns {Promise<Object|null>}
