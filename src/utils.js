@@ -187,7 +187,13 @@ function createJsonResponse(data) {
  * @returns {Response} 重定向响应对象
  */
 function createRedirectResponse(url) {
-    return Response.redirect(url, 302);
+    // 不用 Response.redirect()：它在 Workers 运行时里要求绝对 URL，
+    // 传相对路径（如 "/admin"）会抛 TypeError。直接手写 Location 头，
+    // 相对路径在 HTTP 规范里是合法的，浏览器会自行解析。
+    return new Response(null, {
+        status: 302,
+        headers: { Location: url }
+    });
 }
 
 /**
